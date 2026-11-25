@@ -41,6 +41,8 @@ def default_params():
         sig_chi=0.0222, sig_vt=0.0010, sig_g=0.0095, sig_t=0.0261,
         sig_pistar=0.0004, sig_mp=0.0024, sig_GN=0.0028, sig_oS=0.0167,
         eta_mup=0.7567, eta_muw=0.5043,
+        # 表1 パネルB: COVID特殊ショック
+        sig_chi_cov=0.045, sig_t_cov=0.220, sig_N_cov=0.015,
         # 正規化
         n_ss=1.0, pO_ss=1.0,
     )
@@ -62,6 +64,12 @@ SHOCKS = [
     ('mp', 'mp', '金融政策ショック'),
     ('pistar', 'pistar', 'インフレ目標ショック'),
 ]
+# COVID 特殊ショック（2020〜21年のみ有効, 3.3節）
+COVID_SHOCKS = [
+    ('chi_cov', 'chi', 'COVID需要ショック'),
+    ('t_cov', 't', 'COVID移転支出ショック'),
+    ('N_cov', 'GN', 'COVID労働供給ショック'),
+]
 
 # 内生変数（粘着価格ブロック）。伸縮価格ブロックは末尾 _f を付け、賃金/価格インデックス関連を除く
 CORE_VARS = ['cw', 'cNw', 'cOw', 'bw', 'cs', 'cNs', 'cOs', 'Qk', 'i', 'u', 'Rk', 'k', 'ku',
@@ -69,9 +77,11 @@ CORE_VARS = ['cw', 'cNw', 'cOw', 'bw', 'cs', 'cNs', 'cOs', 'Qk', 'i', 'u', 'Rk',
              'c', 'gdp', 'bg', 'taul', 'tauk', 'd', 'rr', 'Pih']
 STICKY_ONLY = ['Piw', 'Pind', 'Pwind']
 EXO_VARS = ['GZ', 'GN', 'zeta', 'mup', 'muw', 'oS', 'chi', 'vt', 'g', 't', 'mp', 'pistar',
-            'emup_lag', 'emuw_lag']
+            'emup_lag', 'emuw_lag', 'chit', 'tt', 'GNt', 'ecovN_lag']
 OBS_VARS = ['Pi_l1', 'Pi_l2', 'Pi_l3', 'Pih_l1', 'Pih_l2', 'Pih_l3',
-            'gdp_obs', 'ffr', 'core_yoy', 'head_yoy', 'gap', 'rstar', 'rstar_ann']
+            'gdp_obs', 'ffr', 'core_yoy', 'head_yoy', 'gap', 'rstar', 'rstar_ann',
+            'cons_obs', 'inv_obs', 'gov_obs', 'tr_obs', 'wage_obs', 'hours_obs',
+            'gas_obs', 'oil_obs', 'Raaa']
 
 
 # ---------------------------------------------------------------------------
@@ -141,11 +151,15 @@ def steady_state(p):
         full[key + '_f'] = val
     full.update(GZ=p['GZ_bar'], GN=p['GN_bar'], zeta=1.0, mup=p['mup_bar'], muw=p['muw_bar'],
                 oS=oS, chi=1.0, vt=p['vartheta_bar'], g=g, t=t, mp=1.0, pistar=Pi,
-                emup_lag=0.0, emuw_lag=0.0)
+                emup_lag=0.0, emuw_lag=0.0, chit=1.0, tt=t, GNt=p['GN_bar'], ecovN_lag=0.0)
     p['oS_bar'], p['g_bar'], p['t_bar'] = oS, g, t
     full.update(Pi_l1=Pi, Pi_l2=Pi, Pi_l3=Pi, Pih_l1=Pi, Pih_l2=Pi, Pih_l3=Pi,
                 gdp_obs=400 * np.log(Gam), ffr=400 * np.log(R), core_yoy=400 * np.log(Pi),
-                head_yoy=400 * np.log(Pi), gap=0.0, rstar=R / Pi, rstar_ann=400 * np.log(R / Pi))
+                head_yoy=400 * np.log(Pi), gap=0.0, rstar=R / Pi, rstar_ann=400 * np.log(R / Pi),
+                cons_obs=400 * np.log(Gam), inv_obs=400 * np.log(Gam), gov_obs=400 * np.log(Gam),
+                tr_obs=400 * np.log(Gam), wage_obs=400 * np.log(p['GZ_bar']),
+                hours_obs=400 * np.log(p['GN_bar']), gas_obs=400 * np.log(Pi), oil_obs=np.log(pO),
+                Raaa=R * p['vartheta_bar'])
     # 資本家の予算制約（ワルラス法則でモデルからは落としている）のチェック
     bs = (bg - lam * bw) / (1 - lam)
     lhs = (1 - lam) * ((1 + tauc) * (cNs + pO * cOs) + bs / R - bs / (Pi * Gam) - t) + i
@@ -164,9 +178,9 @@ def block_equations(L, C, F, E, p, sfx, flex):
     xf = lambda nm: F(nm + sfx)
     nuC, wC, nuY, wY, a = p['nuC'], p['omegaC'], p['nuY'], p['omegaY'], p['alpha']
     lam, tauc = p['lam'], p['tauc']
-    Gam, Gamf = C('GZ') * C('GN'), F('GZ') * F('GN')
+    Gam, Gamf = C('GZ') * C('GNt'), F('GZ') * F('GNt')
     Pistar = C('pistar')
-    vt, chi, chif, zeta, zetaf = C('vt'), C('chi'), F('chi'), C('zeta'), F('zeta')
+    vt, chi, chif, zeta, zetaf = C('vt'), C('chit'), F('chit'), C('zeta'), F('zeta')
     mup = p['mup_bar'] if flex else C('mup')
     muw = p['muw_bar'] if flex else C('muw')
 
@@ -190,7 +204,7 @@ def block_equations(L, C, F, E, p, sfx, flex):
     # --- 労働者 ---
     eq.append(R * vt * mw / Pif / (1 + p['psiw'] * (x('bw') - p['bw_bar'])) - 1)            # (48)
     eq.append((1 + tauc) * (x('cNw') + x('pO') * x('cOw')) + x('bw') / R
-              - (1 - x('taul')) * x('w') * x('n') / lam - xl('bw') / (Pi * Gam) - C('t'))      # (49)
+              - (1 - x('taul')) * x('w') * x('n') / lam - xl('bw') / (Pi * Gam) - C('tt'))      # (49)
     eq.append(x('cOw') - x('pO') ** (-nuC) * wC / (1 - wC) * x('cNw'))                     # (50)
     eq.append(x('cw') - ces(x('cNw'), x('cOw')))                                           # (51)
     # --- 資本家 ---
@@ -212,7 +226,7 @@ def block_equations(L, C, F, E, p, sfx, flex):
         Piw, Pwind = x('Piw'), x('Pwind')
         eq.append(x('w') + muw / (muw - 1) * (x('mrs') - x('w'))
                   - p['etaw'] * Piw / Pwind * (Piw / Pwind - 1)
-                  + p['beta'] * p['etaw'] * F('GN') * xf('n') / x('n')
+                  + p['beta'] * p['etaw'] * F('GNt') * xf('n') / x('n')
                   * xf('Piw') / xf('Pwind') * (xf('Piw') / xf('Pwind') - 1))                # (59)
         eq.append(Pwind - p['GZ_bar'] * xl('Pi') ** p['iotaw'] * Pistar ** (1 - p['iotaw']))  # (61)
         eq.append(Piw - x('w') / xl('w') * C('GZ') * Pi)                                     # (62)
@@ -243,7 +257,7 @@ def block_equations(L, C, F, E, p, sfx, flex):
     eq.append(x('cO') + x('oY') - C('oS'))                                                  # (77)
     eq.append(x('gdp') - x('y') - x('pO') * (C('oS') - x('oY')))                           # (78)
     # --- 政府 ---
-    eq.append(C('g') + C('t') + xl('bg') / (Pi * Gam)
+    eq.append(C('g') + C('tt') + xl('bg') / (Pi * Gam)
               - tauc * (x('cN') + x('pO') * x('cO')) - x('taul') * x('w') * x('n')
               - x('tauk') * (x('Rk') * x('ku') + x('d')) - x('bg') / R)                     # (79)
     debt_ratio = (xl('bg') / xl('gdp')) / p['bg_gdp']
@@ -285,21 +299,37 @@ def exo_equations(L, C, E, p):
     eq.append(ar('pistar', p['Pi_bar'], p['rho_pistar'], p['sig_pistar'], 'pistar'))       # (98)
     eq.append(C('emup_lag') - E('mup'))
     eq.append(C('emuw_lag') - E('muw'))
+    # COVID 特殊ショック (44)-(46)
+    eq.append(lg(C('chit')) - lg(C('chi')) - p['sig_chi_cov'] * E('chi_cov'))
+    eq.append(lg(C('tt')) - lg(C('t')) - p['sig_t_cov'] * E('t_cov'))
+    eq.append(lg(C('GNt')) - lg(C('GN')) - p['sig_N_cov'] * E('N_cov')
+              + p['sig_N_cov'] * L('ecovN_lag'))
+    eq.append(C('ecovN_lag') - E('N_cov'))
     return eq
 
 
-def obs_equations(L, C, F, p, ms_f):
+def obs_equations(L, C, F, p, ms_f, ms, Pif):
     lg = np.log
     eq = []
     eq.append(C('Pi_l1') - L('Pi')); eq.append(C('Pi_l2') - L('Pi_l1')); eq.append(C('Pi_l3') - L('Pi_l2'))
     eq.append(C('Pih_l1') - L('Pih')); eq.append(C('Pih_l2') - L('Pih_l1')); eq.append(C('Pih_l3') - L('Pih_l2'))
-    eq.append(C('gdp_obs') - 400 * (lg(C('gdp')) - lg(L('gdp')) + lg(C('GZ')) + lg(C('GN'))))  # (100)
+    eq.append(C('gdp_obs') - 400 * (lg(C('gdp')) - lg(L('gdp')) + lg(C('GZ')) + lg(C('GNt'))))  # (100)
     eq.append(C('ffr') - 400 * lg(C('R')))                                                      # (107)
     eq.append(C('core_yoy') - 100 * lg(C('Pi') * C('Pi_l1') * C('Pi_l2') * C('Pi_l3')))
     eq.append(C('head_yoy') - 100 * lg(C('Pih') * C('Pih_l1') * C('Pih_l2') * C('Pih_l3')))
     eq.append(C('gap') - 100 * lg(C('gdp') / C('gdp_f')))                                       # 産出ギャップ(%)
     eq.append(C('rstar') * C('vt') * ms_f - 1)                                                  # (99)
     eq.append(C('rstar_ann') - 400 * lg(C('rstar')))
+    growth = lambda v: 400 * (lg(C(v)) - lg(L(v)) + lg(C('GZ')) + lg(C('GNt')))
+    eq.append(C('cons_obs') - growth('c'))                                                    # (101)
+    eq.append(C('inv_obs') - growth('i'))                                                     # (102)
+    eq.append(C('gov_obs') - growth('g'))                                                     # (103)
+    eq.append(C('tr_obs') - growth('tt'))                                                     # (104)
+    eq.append(C('wage_obs') - 400 * (lg(C('w')) - lg(L('w')) + lg(C('GZ'))))                 # (105)
+    eq.append(C('hours_obs') - 400 * (lg(C('n')) - lg(L('n')) + lg(C('GNt'))))                # (106)
+    eq.append(C('gas_obs') - 400 * (lg(C('Pi')) + lg(C('pO')) - lg(L('pO'))))                 # (111)
+    eq.append(C('oil_obs') - lg(C('pO')))                                                     # (110)
+    eq.append(C('Raaa') * ms / Pif - 1)                                                       # (86)
     return eq
 
 
@@ -313,7 +343,7 @@ class Model:
             self.p.update(params)
         self.vars = (CORE_VARS + STICKY_ONLY + [v + '_f' for v in CORE_VARS] + EXO_VARS + OBS_VARS)
         self.idx = {v: j for j, v in enumerate(self.vars)}
-        self.shocks = [s[0] for s in SHOCKS]
+        self.shocks = [s[0] for s in SHOCKS + COVID_SHOCKS]
         self.sidx = {s: j for j, s in enumerate(self.shocks)}
         self.n, self.ne = len(self.vars), len(self.shocks)
         self.ss = steady_state(self.p)
@@ -325,10 +355,10 @@ class Model:
         C = lambda nm: yc[idx[nm]]
         F = lambda nm: yf[idx[nm]]
         E = lambda nm: e[sidx[nm]]
-        eq1, _ = block_equations(L, C, F, E, p, '', flex=False)
+        eq1, ms = block_equations(L, C, F, E, p, '', flex=False)
         eq2, ms_f = block_equations(L, C, F, E, p, '_f', flex=True)
         eq3 = exo_equations(L, C, E, p)
-        eq4 = obs_equations(L, C, F, p, ms_f)
+        eq4 = obs_equations(L, C, F, p, ms_f, ms, F('Pi'))
         return np.array(eq1 + eq2 + eq3 + eq4)
 
     def check_steady_state(self):
