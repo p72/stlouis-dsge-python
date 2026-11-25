@@ -409,7 +409,8 @@ if __name__ == '__main__':
     plt.rcParams['font.family'] = 'IPAGothic'
     plt.rcParams['axes.unicode_minus'] = False
 
-    out = os.path.dirname(os.path.abspath(__file__))
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'figures')
+    os.makedirs(out, exist_ok=True)
     m = Model().solve()
     print('ワルラス法則チェック（資本家予算制約の残差）:', m.p['walras_check'])
     print('消費税率 tau_c (内生):', round(m.p['tauc'], 4))
