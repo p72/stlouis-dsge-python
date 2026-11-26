@@ -70,6 +70,18 @@ COVID_SHOCKS = [
     ('t_cov', 't', 'COVID移転支出ショック'),
     ('N_cov', 'GN', 'COVID労働供給ショック'),
 ]
+# COVID 特殊ショックの有効期間（四半期の初日, 両端を含む）。歴史分解（hd.shock_cov）と simulate() で共有する
+COVID_WINDOWS = {'chi_cov': ('2020-01-01', '2020-07-01'),    # 2020Q1〜Q3
+                 't_cov': ('2020-04-01', '2022-01-01'),      # 2020Q2〜2022Q1
+                 'N_cov': ('2020-01-01', '2020-10-01')}      # 2020Q1〜Q4
+
+
+def covid_active(dates, windows=None):
+    """dates（四半期の日付列）ごとに、各COVIDショックが有効なら1・無効なら0の辞書 {名前: (T,) 配列} を返す"""
+    import pandas as pd
+    d = pd.DatetimeIndex(pd.to_datetime(dates))
+    return {k: ((d >= pd.Timestamp(a)) & (d <= pd.Timestamp(b))).astype(float)
+            for k, (a, b) in (windows or COVID_WINDOWS).items()}
 
 # 内生変数（粘着価格ブロック）。伸縮価格ブロックは末尾 _f を付け、賃金/価格インデックス関連を除く
 CORE_VARS = ['cw', 'cNw', 'cOw', 'bw', 'cs', 'cNs', 'cOs', 'Qk', 'i', 'u', 'Rk', 'k', 'ku',
@@ -419,11 +431,43 @@ class Model:
     def series(self, irf, var):
         return self.ss[var] + irf[:, self.idx[var]]
 
-    def simulate(self, T=200, seed=0):
+    def shock_scale(self, T=None, dates=None, covid=False):
+        """ショックごとの標準偏差の倍率 (T x ne)。通常12ショックは1。
+
+        COVIDショックは既定で0（平時には起きない）。dates を渡すと COVID_WINDOWS の期間だけ1、
+        covid=True なら全期間1（旧来の挙動。分析用に明示したときだけ）。
+        """
+        if dates is not None:
+            T = len(dates) if T is None else T
+            if len(dates) != T:
+                raise ValueError(f'dates の長さ {len(dates)} が T={T} と違います')
+        q = np.ones((T, self.ne))
+        for k, _, _ in COVID_SHOCKS:
+            j = self.sidx[k]
+            if covid:
+                continue
+            q[:, j] = covid_active(dates)[k] if dates is not None else 0.0
+        return q
+
+    def simulate(self, T=200, seed=0, dates=None, shock_scale=None, covid=False):
+        """線形解からのシミュレーション（水準, 元の単位）。
+
+        既定では COVID特殊ショック3本はゼロ（論文3.3節では指定期間のみ有効）。
+        - dates: 長さTの四半期日付。COVID_WINDOWS の期間だけ COVIDショックを有効にする
+        - shock_scale: (T x ne) または (ne,) の標準偏差倍率を直接渡す（時変ショック分散）
+        - covid=True: 全期間で COVIDショックを有効にする（旧来の挙動）
+        乱数は毎期 ne 本引くので、通常ショックの実現値は COVID の扱いによらず同じ seed で同じになる。
+        """
+        if shock_scale is None:
+            if dates is not None:
+                T = len(dates)
+            q = self.shock_scale(T, dates=dates, covid=covid)
+        else:
+            q = np.broadcast_to(np.asarray(shock_scale, dtype=float), (T, self.ne))
         rng = np.random.default_rng(seed)
         x = np.zeros(self.n); out = np.zeros((T, self.n))
         for t in range(T):
-            x = self.P @ x + self.Q @ rng.standard_normal(self.ne)
+            x = self.P @ x + self.Q @ (q[t] * rng.standard_normal(self.ne))
             out[t] = x
         return self.ybar + out
 
