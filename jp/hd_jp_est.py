@@ -118,6 +118,20 @@ if __name__ == '__main__':
     ax.legend(ncol=8, loc='lower left', fontsize=9)
     fig.tight_layout(); fig.savefig(os.path.join(fig_dir, 'hd_jp_est_core_cpi.png'), dpi=130)
 
+    # 1b) 2019Q4 以降の4パネル（お試し版 hd_jp_since2019.png と同じ形）
+    targets = [('core_yoy', 'コアCPIインフレ率（前年比, 2%からの乖離, %pt）'),
+               ('gdp_obs', '1人当たり実質GDP成長率（年率, 平均からの乖離, %pt）'),
+               ('gap', '産出ギャップ（%）'), ('rstar_ann', '自然利子率 r*（年率, 定常状態からの乖離, %pt）')]
+    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+    for ax, (v, t) in zip(axes.flat, targets):
+        stacked(ax, out[v].loc['2019-10-01':], step=2)
+        ax.set_title(t)
+    h, l = axes.flat[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=7, fontsize=11)
+    fig.suptitle('日本の歴史分解（2019Q4〜2026Q3）【本格版：日本データで推定】', fontsize=14)
+    fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+    fig.savefig(os.path.join(fig_dir, 'hd_jp_est_since2019.png'), dpi=130)
+
     # 2) お試し版との比較（グループ別寄与、3期間平均）
     periods = [('1995-01-01', '2012-10-01', 'デフレ期\n1995〜2012'), ('2013-01-01', '2021-10-01', '異次元緩和期\n2013〜2021'),
                ('2023-01-01', '2026-07-01', 'インフレ期\n2023〜2026Q3')]
