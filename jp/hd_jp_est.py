@@ -1,7 +1,9 @@
 """
 本格版の歴史分解: 日本データで推定したパラメータ（事後平均）でカルマン平滑化し、お試し版（米国パラメータ）と比べる
 
-使い方:  python jp/hd_jp_est.py   （先に estimate_jp.py の mode / hessian / mcmc を実行しておく）
+使い方:  python jp/hd_jp_est.py [mean|mode]   （既定は mean）
+  事後平均は MCMCチェーン（Git管理外）→ estimation/posterior_mean.csv → estimation/posterior_draws_thin10.csv の順で探す。
+  どれも無ければ止まる（モードには切り替えない）。使ったパラメータの出どころは標準出力と出力CSVの横の .txt に書く。
 """
 import os
 import sys
@@ -17,12 +19,55 @@ from hd_jp import parts_of, stacked, run as run_trial           # noqa: E402
 from stlouis_dsge import SHOCKS                                 # noqa: E402
 
 
-def posterior_theta(which='mean'):
-    zs = E.load_chains()
-    if which == 'mode' or not zs:
-        return E.to_theta(np.load(os.path.join(E.OUT, 'mode_z.npy')))
-    th = np.array([E.to_theta(z) for z in np.vstack(zs)])
-    return th.mean(0)
+MEAN_CSV = 'posterior_mean.csv'                 # summary が書く全精度の事後平均
+DRAWS_CSV = 'posterior_draws_thin10.csv'        # 公開している間引きドロー（10回に1回）
+
+
+def posterior_theta(which='mean', out_dir=None, return_source=False):
+    """推定パラメータを返す。which は 'mean'（事後平均）か 'mode'（事後モード）。
+
+    事後平均は次の順で探す（見つからなければ FileNotFoundError で止まる。モードへの無言の代替はしない）:
+      1. chain*.npz（MCMC本体。Git管理外）の全ドローの平均
+      2. posterior_mean.csv（全精度の事後平均）
+      3. posterior_draws_thin10.csv（公開している間引きドロー）の平均
+    return_source=True なら (theta, 説明文字列) を返す。
+    """
+    out_dir = out_dir or E.OUT
+    if which == 'mode':
+        f = os.path.join(out_dir, 'mode_z.npy')
+        if not os.path.exists(f):
+            raise FileNotFoundError(f'事後モードのファイルがありません: {f}（estimate_jp.py mode を実行してください）')
+        th, src = E.to_theta(np.load(f)), f'事後モード（{os.path.relpath(f, HERE)}）'
+    elif which == 'mean':
+        zs = E.load_chains(out_dir=out_dir)
+        f_mean, f_draws = os.path.join(out_dir, MEAN_CSV), os.path.join(out_dir, DRAWS_CSV)
+        if zs:
+            n = sum(len(z) for z in zs)
+            th = np.array([E.to_theta(z) for z in np.vstack(zs)]).mean(0)
+            src = f'事後平均（MCMCチェーン {len(zs)} 本, バーンイン後 {n} ドロー）'
+        elif os.path.exists(f_mean):
+            th = _read_theta_csv(f_mean, row=0)
+            src = f'事後平均（{os.path.relpath(f_mean, HERE)}）'
+        elif os.path.exists(f_draws):
+            D = pd.read_csv(f_draws)
+            th = _read_theta_csv(f_draws).mean(0)
+            src = f'事後平均（{os.path.relpath(f_draws, HERE)} の {len(D)} ドローの平均）'
+        else:
+            raise FileNotFoundError(
+                f'事後平均を計算できるファイルがありません（{out_dir} に chain*.npz / {MEAN_CSV} / {DRAWS_CSV} のどれも無い）。'
+                ' estimate_jp.py mcmc → summary を実行するか、モードを使うなら which="mode" を明示してください。')
+    else:
+        raise ValueError(f"which は 'mean' か 'mode': {which!r}")
+    return (th, src) if return_source else th
+
+
+def _read_theta_csv(path, row=None):
+    D = pd.read_csv(path)
+    missing = [n for n in E.NAMES if n not in D.columns]
+    if missing:
+        raise ValueError(f'{path} にパラメータ列がありません: {missing}')
+    A = D[E.NAMES].to_numpy(dtype=float)              # 列は名前で並べ直す（ファイルの列順に依存しない）
+    return A[row] if row is not None else A
 
 
 def run_est(theta):
@@ -44,11 +89,15 @@ if __name__ == '__main__':
     plt.rcParams['axes.unicode_minus'] = False
     data = E.DATA
     fig_dir = os.path.join(HERE, 'figures')
-    th = posterior_theta('mean')
+    which = sys.argv[1] if len(sys.argv) > 1 else 'mean'
+    th, src = posterior_theta(which, return_source=True)
+    print('使用パラメータ:', src)
     m, T, R, Z, d, xs, eta, ll, init, contrib = run_est(th)
-    print('対数尤度（事後平均パラメータ）:', round(ll, 1))
+    print('対数尤度:', round(ll, 1))
     out = {v: parts_of(m, init, contrib, xs, v, data.index) for v in ['core_yoy', 'gap', 'rstar_ann', 'ffr', 'gdp_obs']}
     pd.concat(out, axis=1).to_csv(os.path.join(HERE, 'data', 'historical_decomposition_jp_est.csv'), float_format='%.4f')
+    with open(os.path.join(HERE, 'data', 'historical_decomposition_jp_est.source.txt'), 'w', encoding='utf-8') as fh:
+        fh.write(f'使用パラメータ: {src}\n対数尤度: {ll:.2f}\n')
     j = m.idx['core_yoy']
     det = pd.DataFrame({s[0]: contrib[:, m.sidx[s[0]], j] for s in SHOCKS}, index=data.index)
     det.to_csv(os.path.join(HERE, 'data', 'core_yoy_by_shock_jp_est.csv'), float_format='%.4f')
@@ -98,8 +147,8 @@ if __name__ == '__main__':
 
     # 4) 主要パラメータの事前・事後
     zs = E.load_chains()
-    if zs:
-        draws = np.array([E.to_theta(z) for z in np.vstack(zs)])
+    if zs or os.path.exists(os.path.join(E.OUT, DRAWS_CSV)):
+        draws = np.array([E.to_theta(z) for z in np.vstack(zs)]) if zs else _read_theta_csv(os.path.join(E.OUT, DRAWS_CSV))
         show = ['etap', 'etaw', 'iotap', 'phiPi', 'phiY', 'rhor', 'rho_mp', 'rho_pistar', 'sig_pistar', 'rho_chi', 'sig_mp', 'psii']
         fig, axes = plt.subplots(3, 4, figsize=(16, 10))
         for ax, nm in zip(axes.flat, show):

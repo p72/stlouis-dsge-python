@@ -86,8 +86,15 @@ python jp/estimate_jp.py mode          # 事後モード（L-BFGS-B、止まっ�
 python jp/estimate_jp.py hessian       # モードでのヘッセ行列
 python jp/estimate_jp.py mcmc 15000 4  # ランダムウォーク・メトロポリス 4チェーン（500回ごとに保存、再実行で続きから）
 python jp/estimate_jp.py summary       # estimation/posterior_summary.csv
-python jp/hd_jp_est.py                 # 本格版の歴史分解と比較図
+python jp/hd_jp_est.py                 # 本格版の歴史分解と比較図（既定は事後平均。`python jp/hd_jp_est.py mode` でモード）
 ```
+
+**クリーンチェックアウトでの再生成**: MCMCチェーン本体（`estimation/chain*.npz`）はGit管理外。`hd_jp_est.py` の事後平均は
+チェーン → `estimation/posterior_mean.csv`（`summary` が全精度で書く）→ 公開している `estimation/posterior_draws_thin10.csv`
+（4,200ドロー）の平均、の順で探し、どれも無ければ止まる（モードには切り替えない）。使ったパラメータの出どころは標準出力と
+`data/historical_decomposition_jp_est.source.txt` に書く。掲載の歴史分解CSV・図は全チェーン（42,000ドロー）の平均で作ったもので、
+間引きドローの平均で再生成すると差は最大0.003%pt程度（2023年以降の金融寄与はどちらも +1.22%pt）。
+`posterior_summary.csv` の事後平均は小数4桁に丸めてあり、小さい標準偏差（sig_mp など）がずれるので再生成には使わないこと。
 
 ## 推定の設定
 - **推定するもの（37個）**: 価格・賃金の調整コスト（etap, etaw）、指数化（iotap, iotaw）、投資調整コスト、稼働率、

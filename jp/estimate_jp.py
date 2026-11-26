@@ -239,11 +239,14 @@ def z_start():
                           for i, n in enumerate(NAMES)]))
 
 
-def load_chains(burn=0.3):
+def load_chains(burn=0.3, out_dir=None):
+    out_dir = out_dir or OUT
     zs = []
-    for f in sorted(os.listdir(OUT)):
+    if not os.path.isdir(out_dir):
+        return zs
+    for f in sorted(os.listdir(out_dir)):
         if f.startswith('chain') and f.endswith('.npz'):
-            z = np.load(os.path.join(OUT, f))['z']
+            z = np.load(os.path.join(out_dir, f))['z']
             zs.append(z[int(burn * len(z)):])
     return zs
 
@@ -304,5 +307,7 @@ if __name__ == '__main__':
                              Rhat=rhat[i]))
         df = pd.DataFrame(rows)
         df.to_csv(os.path.join(OUT, 'posterior_summary.csv'), index=False, float_format='%.4f')
+        # 歴史分解の再生成用に全精度の事後平均も残す（summary の4桁丸めでは小さい標準偏差がずれるため）
+        pd.DataFrame([th.mean(0)], columns=NAMES).to_csv(os.path.join(OUT, 'posterior_mean.csv'), index=False, float_format='%.10g')
         print(df.round(4).to_string())
         print('総ドロー数:', len(allz))
