@@ -1,0 +1,50 @@
+{
+ "mode": "paper",
+ "start": "1959-01-01",
+ "end": "2026-04-01",
+ "fred_vintage": "2026-11-25",
+ "fred_retrieved_at": "2026-11-26T15:28:42+00:00",
+ "fred_dir": "data/raw_fred",
+ "other_dir": "data/raw",
+ "other_retrieved_at": "2026-11-26T15:28:42+00:00",
+ "inputs": {
+  "data/raw_fred/GDP.csv": "cbfaee646b1ca35e71f68399479dcba93b2d990c030b7c080514f260cfa85ae7",
+  "data/raw_fred/GDPDEF.csv": "5302e4d66ff513c6e8b3a2d72cc073e7e1f19c34b7f1e96ccdf8b3982cbc7312",
+  "data/raw_fred/POPTHM.csv": "6e2f0e48713f3e5adb9202412adba551587cb1c4d4eb008cf5e93ff5eb04ca8f",
+  "data/raw_fred/PCE.csv": "1173e12835fe9ebb819bd5375beb09bf4a396a8cdf6b83f467e1d23915dc31ce",
+  "data/raw_fred/GPDI.csv": "6043e043bbd0fb870906eca2ebc9370f5b957054d6d53b16d7d9fa938c9c8365",
+  "data/raw_fred/GCE.csv": "a7dbe930d8c86b9f462a3a29e067f511bd6464d3099877e167d77f51304cb949",
+  "data/raw_fred/BOGZ1FA366404005Q.csv": "db03f5a0ef7416d173768e69ee2a50db3efbbc8297e646f40ea0b3be6a8d7530",
+  "data/raw_fred/BOGZ1FA366403005Q.csv": "ccc78775bd466da063b6731e158372b43a4270541643cf1aa8a37e38c2012217",
+  "data/raw_fred/BOGZ1FA366402005Q.csv": "def1492ae0963a6fe088347962d29d0e856908be3d9b65fc641b61acfd332545",
+  "data/raw_fred/COMPNFB.csv": "6198fb979da4518fa96aa02120d2e9d4f56564b5955b72e4d8713a71e7ff3432",
+  "data/raw_fred/AWHNONAG.csv": "daa0623db239c9bfdaa3255d29f0d3014066f77cfff3e23552287dbe230196c9",
+  "data/raw_fred/CE16OV.csv": "e8854ac2b67ad4d0a7cce9a3c53791b469f767355856ebec0f0b6fa9b9ed72b3",
+  "data/raw_fred/CNP16OV.csv": "a58f5aa50bd26a9a097d799aed416ad5b502c191cee5431eecaf5bc198b4a451",
+  "data/raw_fred/FEDFUNDS.csv": "b20ef282fac70596472ddf9eb4ccf5440afd80efcbab947ec1c661c37cbaf5b3",
+  "data/raw_fred/PCEPILFE.csv": "636d44daced2c450ebb85bfb1a5eaedb82b51d9e81775d0815a68a9ff352a961",
+  "data/raw_fred/WTISPLC.csv": "9a84cc00311ccaed2b071709e381dd5052ef26be679df46918df67d926286b4f",
+  "data/raw_fred/DGOERG3Q086SBEA.csv": "e8981e16a01dc445c3948a50875a1678312c1ea1bf08aa20abd88eb14f92fdb3",
+  "data/raw_fred/DGS10.csv": "9e719665350070ed228535c66b1914b42cc3a96a8ebd3e70ccbc7520da716845",
+  "data/raw_fred/AAA.csv": "5bce24da71b2681536057fcd18f79651af23ea9a076e5e599e83db44e3902626",
+  "data/raw_fred/DGS20.csv": "db62218a5b7b45cf9a6c7f2f30791cd11b92b79ee4a9cab883995797901ad4ae",
+  "data/raw_fred/EXPINF10YR.csv": "cc18c1b618b3fe728bb7a941ef2d0c42f567e81b3b99d5b4fad95772f6c7e1c2",
+  "data/raw_fred/CPIAUCSL.csv": "08383982acff341ecfde794a0d74bef6947d0f770177a83ed65e22a3a3fd13af",
+  "data/raw_fred/PCEPI.csv": "fb57c5c9567968e4c7008447da534196d8f517ec39dffb4294e012027ce472f4",
+  "data/raw/quarterly_tfp.xlsx": "cbb98c4416190b177f55c36cd06d0241d64ad4377044a1a87c79da49b9c1204c",
+  "data/raw/meanLevel.xlsx": "84062440c99658820e6da30d87b39d03297c2d442696fefc6d47e9c5ac066498",
+  "data/raw/Inflation.xlsx": "2b2147fb5bf756ec0a48e70a376aedac8ea5b6eccaab02d03da480878e7a8a9e",
+  "data/raw/Additional-CPIE10.xlsx": "6e17c6be342efdef16171ab3beb50c5d8dc6a5683d5c3894757fa18464970416"
+ },
+ "processing": {
+  "order": "四半期平均 → [start の1期前, end] に切り詰め → HP・平均除去・平均差",
+  "cpi_pce_realized_gap": 0.42466608636315917,
+  "tfp_mean_removed": 1.5925901159413427,
+  "spf_cpi10_minus_pce10": 0.1778782051282051
+ },
+ "outputs": [
+  "data/observables.csv",
+  "data/observables_paper.csv",
+  "data/paper_sources.csv"
+ ]
+}

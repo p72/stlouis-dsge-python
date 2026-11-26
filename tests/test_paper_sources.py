@@ -10,7 +10,6 @@ import hd
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = pd.read_csv(os.path.join(HERE, 'data', 'paper_sources.csv'), index_col=0, parse_dates=True)
-HAS_RAW = all(os.path.exists(os.path.join(D.RAW, f)) for f in D.PAPER_URLS)
 
 
 def test_tfp_model_consistent_and_demeaned():
@@ -58,7 +57,6 @@ def test_paper_figure_digitized():
     assert core.loc['2019-10-01'] == pytest.approx(-0.45, abs=0.1)
 
 
-@pytest.mark.skipif(not HAS_RAW, reason='data/raw/ に原データが無い（python data.py --paper-sources で取得）')
 def test_rebuild_from_raw_matches_committed():
     s = D.paper_sources()
     for c in ['tfp', 'infexp']:

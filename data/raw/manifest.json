@@ -1,0 +1,25 @@
+{
+ "retrieved_at": "2026-11-26T15:28:42+00:00",
+ "files": {
+  "quarterly_tfp.xlsx": {
+   "url": "https://www.frbsf.org/wp-content/uploads/quarterly_tfp.xlsx",
+   "sha256": "cbb98c4416190b177f55c36cd06d0241d64ad4377044a1a87c79da49b9c1204c",
+   "bytes": 265519
+  },
+  "meanLevel.xlsx": {
+   "url": "https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/survey-of-professional-forecasters/historical-data/meanLevel.xlsx",
+   "sha256": "84062440c99658820e6da30d87b39d03297c2d442696fefc6d47e9c5ac066498",
+   "bytes": 602476
+  },
+  "Inflation.xlsx": {
+   "url": "https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/survey-of-professional-forecasters/historical-data/Inflation.xlsx",
+   "sha256": "2b2147fb5bf756ec0a48e70a376aedac8ea5b6eccaab02d03da480878e7a8a9e",
+   "bytes": 11800
+  },
+  "Additional-CPIE10.xlsx": {
+   "url": "https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/survey-of-professional-forecasters/historical-data/Additional-CPIE10.xlsx",
+   "sha256": "6e17c6be342efdef16171ab3beb50c5d8dc6a5683d5c3894757fa18464970416",
+   "bytes": 16533
+  }
+ }
+}
