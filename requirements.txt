@@ -1,5 +1,7 @@
-matplotlib
-numpy
-openpyxl
-pytest
-scipy
+# Python 3.13 で確認（下限と最新の2通り。README「動作環境」参照）
+numpy>=2.1
+scipy>=1.14.1
+pandas>=2.2.3
+matplotlib>=3.9.2
+openpyxl>=3.1.2   # data.py --paper-sources（Excel の原データ読み込み）
+pytest>=8.3       # テスト
