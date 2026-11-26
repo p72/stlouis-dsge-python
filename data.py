@@ -3,12 +3,21 @@
 
 使い方:  FRED_API_KEY=xxxx python data.py   ->  data/observables.csv
 
-論文との違い（取得できない系列の代替）:
-- TFP成長率（Fernald, SF連銀）: FRED に無いため欠損扱い（カルマンフィルタが補完）
-- 10年インフレ期待（SPF, フィラデルフィア連銀）: FRED の EXPINF10YR（クリーブランド連銀,
-  10年CPIインフレ期待, 1982年〜）で代用し、CPI と PCE インフレの平均差を差し引く
+TFP と 10年インフレ期待は、論文 3.2 節どおり FRED 以外から作る（paper_sources()）:
+- TFP成長率: SF連銀 Fernald の quarterly_tfp.xlsx から、モデル整合的な系列
+      dtfp/(1−alpha) − alpha/(1−alpha) × dutil
+  を作り、推定期間（1959Q1〜2026Q2）の平均を引く（dtfp: 稼働率調整なしの事業部門TFP, alpha: 資本シェア, dutil: 稼働率）
+- 10年インフレ期待: フィラデルフィア連銀 SPF の10年PCEインフレ予測（PCE10, 2007Q1〜）。それより前は10年CPI予測
+  （SPF の INFCPI10YR 1991Q4〜、それより前は Livingston と Blue Chip を合わせた系列 1979Q4〜1991Q3）から、
+  PCE10 と CPI10 の重なる期間（2007Q1〜）の平均差を引いて接続する
+
+    python data.py --paper-sources   # data/raw/ に原データを取得し、observables_paper.csv を作る（FREDキー不要）
+
+data/observables.csv は旧来の代替データ版（TFP欠損、EXPINF10YR で代用）のまま残してあり、
+python data.py（FREDキーが必要）で作り直せる。
 """
 import os
+import sys
 import json
 import time
 import urllib.request
@@ -71,6 +80,96 @@ def build(raw):
     o['t10'] = q['DGS10']
     o['cy'] = q['AAA'] - q['DGS20']
     return o
+
+
+RAW = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'raw')
+PAPER_URLS = {
+    'quarterly_tfp.xlsx': 'https://www.frbsf.org/wp-content/uploads/quarterly_tfp.xlsx',
+    'meanLevel.xlsx': 'https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/'
+                      'survey-of-professional-forecasters/historical-data/meanLevel.xlsx',
+    'Inflation.xlsx': 'https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/'
+                      'survey-of-professional-forecasters/historical-data/Inflation.xlsx',
+    'Additional-CPIE10.xlsx': 'https://www.philadelphiafed.org/-/media/FRBP/Assets/Surveys-And-Data/'
+                              'survey-of-professional-forecasters/historical-data/Additional-CPIE10.xlsx',
+}
+SAMPLE = ('1959-01-01', '2026-04-01')
+
+
+def fetch_raw(name, raw_dir=RAW):
+    path = os.path.join(raw_dir, name)
+    if not os.path.exists(path):
+        os.makedirs(raw_dir, exist_ok=True)
+        req = urllib.request.Request(PAPER_URLS[name], headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=60) as r, open(path, 'wb') as f:
+            f.write(r.read())
+    return path
+
+
+def _q(year, quarter):
+    return pd.Timestamp(year=int(year), month=3 * int(quarter) - 2, day=1)
+
+
+def fernald_tfp(path):
+    """Fernald の四半期TFPからモデル整合的なTFP成長率（年率%、平均除去前）と構成要素を返す"""
+    d = pd.read_excel(path, sheet_name='quarterly', header=None)
+    hdr = d.index[d[0] == 'date'][0]
+    d = d.iloc[hdr + 1:].copy(); d.columns = pd.read_excel(path, sheet_name='quarterly', header=None).iloc[hdr]
+    d = d[d['date'].astype(str).str.match(r'^\d{4}:Q[1-4]$')]
+    idx = [_q(*str(x).split(':Q')) for x in d['date']]
+    f = d[['dtfp', 'alpha', 'dutil']].astype(float).set_index(pd.DatetimeIndex(idx))
+    f['tfp_model'] = f['dtfp'] / (1 - f['alpha']) - f['alpha'] / (1 - f['alpha']) * f['dutil']
+    return f
+
+
+def spf_infexp(meanlevel, inflation, combined):
+    """10年インフレ期待（PCEベース, %）と構成要素。PCE10 が無い期間は CPI10 − 平均差"""
+    pce = pd.read_excel(meanlevel, sheet_name='PCE10')
+    pce = pd.Series(pce['PCE10'].values, index=[_q(y, q) for y, q in zip(pce['YEAR'], pce['QUARTER'])], dtype=float)
+    inf = pd.read_excel(inflation)
+    cpi_spf = pd.Series(inf['INFCPI10YR'].values, index=[_q(y, q) for y, q in zip(inf['YEAR'], inf['QUARTER'])], dtype=float)
+    c = pd.read_excel(combined, header=None)
+    hdr = c.index[c[0].astype(str).str.strip() == 'Survey Date'][0]
+    c = c.iloc[hdr + 1:]
+    c = c[c[0].astype(str).str.match(r'^\d{4}:[1-4]$')]
+    cpi_old = pd.Series(pd.to_numeric(c[3], errors='coerce').values,
+                        index=[_q(*str(x).split(':')) for x in c[0]], dtype=float)
+    cpi = cpi_spf.combine_first(cpi_old.loc[:'1991-07-01'])          # 1991Q4〜は SPF、それ以前は Livingston + Blue Chip
+    both = pd.concat([cpi, pce], axis=1, keys=['cpi', 'pce']).dropna()
+    gap = float((both['cpi'] - both['pce']).mean())
+    out = pd.DataFrame({'pce10': pce, 'cpi10': cpi}).sort_index()
+    out['cpi10_minus_gap'] = out['cpi10'] - gap
+    out['infexp'] = out['pce10'].combine_first(out['cpi10_minus_gap'])
+    out['source'] = np.where(out['pce10'].notna(), 'SPF PCE10',
+                             np.where(out['cpi10'].notna(),
+                                      np.where(out.index >= '1991-10-01', 'SPF CPI10 − 差', 'Livingston/Blue Chip CPI10 − 差'), ''))
+    return out, gap
+
+
+def paper_sources(raw_dir=RAW):
+    """論文 3.2 節どおりの TFP成長率（平均除去済み）と10年インフレ期待"""
+    p = {k: fetch_raw(k, raw_dir) for k in PAPER_URLS}
+    f = fernald_tfp(p['quarterly_tfp.xlsx'])
+    mean = f['tfp_model'].loc[SAMPLE[0]:SAMPLE[1]].mean()
+    f['tfp'] = f['tfp_model'] - mean
+    e, gap = spf_infexp(p['meanLevel.xlsx'], p['Inflation.xlsx'], p['Additional-CPIE10.xlsx'])
+    out = f[['dtfp', 'alpha', 'dutil', 'tfp_model', 'tfp']].join(e, how='outer')
+    out.attrs.update(tfp_mean=float(mean), cpi_pce_gap=gap)
+    return out
+
+
+if __name__ == '__main__' and '--paper-sources' in sys.argv:
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = paper_sources()
+    src.to_csv(os.path.join(here, 'data', 'paper_sources.csv'), float_format='%.6f')
+    obs = pd.read_csv(os.path.join(here, 'data', 'observables.csv'), index_col=0, parse_dates=True)
+    obs['tfp'] = src['tfp'].reindex(obs.index)
+    obs['infexp'] = src['infexp'].reindex(obs.index)
+    obs.to_csv(os.path.join(here, 'data', 'observables_paper.csv'), float_format='%.6f')
+    print('TFP（モデル整合）の平均（除去した値）:', round(src.attrs['tfp_mean'], 4))
+    print('CPI10 − PCE10 の平均差（2007Q1〜）:', round(src.attrs['cpi_pce_gap'], 4))
+    print('TFP 観測期間:', src['tfp'].dropna().index[0].date(), '〜', src['tfp'].dropna().index[-1].date())
+    print('インフレ期待の出どころ:', src.groupby('source')['infexp'].count().to_dict())
+    sys.exit(0)
 
 
 if __name__ == '__main__':
