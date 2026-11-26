@@ -1,0 +1,191 @@
+{
+ "retrieved_at": "2026-11-26T15:28:42+00:00",
+ "vintage_date": "2026-11-25",
+ "source": "https://alfred.stlouisfed.org/graph/alfredgraph.csv?id={sid}&vintage_date={vintage}",
+ "series": {
+  "GDP": {
+   "file": "GDP.csv",
+   "column": "GDP_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "cbfaee646b1ca35e71f68399479dcba93b2d990c030b7c080514f260cfa85ae7"
+  },
+  "GDPDEF": {
+   "file": "GDPDEF.csv",
+   "column": "GDPDEF_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "5302e4d66ff513c6e8b3a2d72cc073e7e1f19c34b7f1e96ccdf8b3982cbc7312"
+  },
+  "POPTHM": {
+   "file": "POPTHM.csv",
+   "column": "POPTHM_20261125",
+   "rows": 814,
+   "first": "1959-01-01",
+   "last": "2026-10-01",
+   "sha256": "6e2f0e48713f3e5adb9202412adba551587cb1c4d4eb008cf5e93ff5eb04ca8f"
+  },
+  "PCE": {
+   "file": "PCE.csv",
+   "column": "PCE_20261125",
+   "rows": 814,
+   "first": "1959-01-01",
+   "last": "2026-10-01",
+   "sha256": "1173e12835fe9ebb819bd5375beb09bf4a396a8cdf6b83f467e1d23915dc31ce"
+  },
+  "GPDI": {
+   "file": "GPDI.csv",
+   "column": "GPDI_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "6043e043bbd0fb870906eca2ebc9370f5b957054d6d53b16d7d9fa938c9c8365"
+  },
+  "GCE": {
+   "file": "GCE.csv",
+   "column": "GCE_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "a7dbe930d8c86b9f462a3a29e067f511bd6464d3099877e167d77f51304cb949"
+  },
+  "BOGZ1FA366404005Q": {
+   "file": "BOGZ1FA366404005Q.csv",
+   "column": "BOGZ1FA366404005Q_20261125",
+   "rows": 304,
+   "first": "1946-10-01",
+   "last": "2026-04-01",
+   "sha256": "db03f5a0ef7416d173768e69ee2a50db3efbbc8297e646f40ea0b3be6a8d7530"
+  },
+  "BOGZ1FA366403005Q": {
+   "file": "BOGZ1FA366403005Q.csv",
+   "column": "BOGZ1FA366403005Q_20261125",
+   "rows": 304,
+   "first": "1946-10-01",
+   "last": "2026-04-01",
+   "sha256": "ccc78775bd466da063b6731e158372b43a4270541643cf1aa8a37e38c2012217"
+  },
+  "BOGZ1FA366402005Q": {
+   "file": "BOGZ1FA366402005Q.csv",
+   "column": "BOGZ1FA366402005Q_20261125",
+   "rows": 304,
+   "first": "1946-10-01",
+   "last": "2026-04-01",
+   "sha256": "def1492ae0963a6fe088347962d29d0e856908be3d9b65fc641b61acfd332545"
+  },
+  "COMPNFB": {
+   "file": "COMPNFB.csv",
+   "column": "COMPNFB_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "6198fb979da4518fa96aa02120d2e9d4f56564b5955b72e4d8713a71e7ff3432"
+  },
+  "AWHNONAG": {
+   "file": "AWHNONAG.csv",
+   "column": "AWHNONAG_20261125",
+   "rows": 754,
+   "first": "1964-01-01",
+   "last": "2026-10-01",
+   "sha256": "daa0623db239c9bfdaa3255d29f0d3014066f77cfff3e23552287dbe230196c9"
+  },
+  "CE16OV": {
+   "file": "CE16OV.csv",
+   "column": "CE16OV_20261125",
+   "rows": 945,
+   "first": "1948-01-01",
+   "last": "2026-10-01",
+   "sha256": "e8854ac2b67ad4d0a7cce9a3c53791b469f767355856ebec0f0b6fa9b9ed72b3"
+  },
+  "CNP16OV": {
+   "file": "CNP16OV.csv",
+   "column": "CNP16OV_20261125",
+   "rows": 945,
+   "first": "1948-01-01",
+   "last": "2026-10-01",
+   "sha256": "a58f5aa50bd26a9a097d799aed416ad5b502c191cee5431eecaf5bc198b4a451"
+  },
+  "FEDFUNDS": {
+   "file": "FEDFUNDS.csv",
+   "column": "FEDFUNDS_20261125",
+   "rows": 868,
+   "first": "1954-07-01",
+   "last": "2026-10-01",
+   "sha256": "b20ef282fac70596472ddf9eb4ccf5440afd80efcbab947ec1c661c37cbaf5b3"
+  },
+  "PCEPILFE": {
+   "file": "PCEPILFE.csv",
+   "column": "PCEPILFE_20261125",
+   "rows": 814,
+   "first": "1959-01-01",
+   "last": "2026-10-01",
+   "sha256": "636d44daced2c450ebb85bfb1a5eaedb82b51d9e81775d0815a68a9ff352a961"
+  },
+  "WTISPLC": {
+   "file": "WTISPLC.csv",
+   "column": "WTISPLC_20261125",
+   "rows": 970,
+   "first": "1946-01-01",
+   "last": "2026-10-01",
+   "sha256": "9a84cc00311ccaed2b071709e381dd5052ef26be679df46918df67d926286b4f"
+  },
+  "DGOERG3Q086SBEA": {
+   "file": "DGOERG3Q086SBEA.csv",
+   "column": "DGOERG3Q086SBEA_20261125",
+   "rows": 319,
+   "first": "1947-01-01",
+   "last": "2026-07-01",
+   "sha256": "e8981e16a01dc445c3948a50875a1678312c1ea1bf08aa20abd88eb14f92fdb3"
+  },
+  "DGS10": {
+   "file": "DGS10.csv",
+   "column": "DGS10_20261125",
+   "rows": 16209,
+   "first": "1962-01-02",
+   "last": "2026-11-24",
+   "sha256": "9e719665350070ed228535c66b1914b42cc3a96a8ebd3e70ccbc7520da716845"
+  },
+  "AAA": {
+   "file": "AAA.csv",
+   "column": "AAA_20261125",
+   "rows": 1294,
+   "first": "1919-01-01",
+   "last": "2026-10-01",
+   "sha256": "5bce24da71b2681536057fcd18f79651af23ea9a076e5e599e83db44e3902626"
+  },
+  "DGS20": {
+   "file": "DGS20.csv",
+   "column": "DGS20_20261125",
+   "rows": 14520,
+   "first": "1962-01-02",
+   "last": "2026-11-24",
+   "sha256": "db62218a5b7b45cf9a6c7f2f30791cd11b92b79ee4a9cab883995797901ad4ae"
+  },
+  "EXPINF10YR": {
+   "file": "EXPINF10YR.csv",
+   "column": "EXPINF10YR_20261125",
+   "rows": 539,
+   "first": "1982-01-01",
+   "last": "2026-11-01",
+   "sha256": "cc18c1b618b3fe728bb7a941ef2d0c42f567e81b3b99d5b4fad95772f6c7e1c2"
+  },
+  "CPIAUCSL": {
+   "file": "CPIAUCSL.csv",
+   "column": "CPIAUCSL_20261125",
+   "rows": 957,
+   "first": "1947-01-01",
+   "last": "2026-10-01",
+   "sha256": "08383982acff341ecfde794a0d74bef6947d0f770177a83ed65e22a3a3fd13af"
+  },
+  "PCEPI": {
+   "file": "PCEPI.csv",
+   "column": "PCEPI_20261125",
+   "rows": 814,
+   "first": "1959-01-01",
+   "last": "2026-10-01",
+   "sha256": "fb57c5c9567968e4c7008447da534196d8f517ec39dffb4294e012027ce472f4"
+  }
+ }
+}

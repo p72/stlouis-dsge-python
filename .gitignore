@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
 jp/estimation/chain*.npz
-data/raw/
+data/raw_fred_latest/
+data/raw_latest/
+data/observables_latest*
+data/observables_paper_latest.csv
+data/paper_sources_latest.csv
