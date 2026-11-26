@@ -121,7 +121,7 @@ if __name__ == '__main__':
     # 1b) 2019Q4 以降の4パネル（お試し版 hd_jp_since2019.png と同じ形）
     targets = [('core_yoy', 'コアCPIインフレ率（前年比, 2%からの乖離, %pt）'),
                ('gdp_obs', '1人当たり実質GDP成長率（年率, 平均からの乖離, %pt）'),
-               ('gap', '産出ギャップ（%）'), ('rstar_ann', '自然利子率 r*（年率, 定常状態からの乖離, %pt）')]
+               ('gap', '産出ギャップ（%）'), ('rstar_ann', f'自然利子率 r*（年率, 定常値{m.ss["rstar_ann"]:.2f}%からの乖離, %pt）')]
     fig, axes = plt.subplots(2, 2, figsize=(16, 10))
     for ax, (v, t) in zip(axes.flat, targets):
         stacked(ax, out[v].loc['2019-10-01':], step=2)
@@ -131,6 +131,31 @@ if __name__ == '__main__':
     fig.suptitle('日本の歴史分解（2019Q4〜2026Q3）【本格版：日本データで推定】', fontsize=14)
     fig.tight_layout(rect=[0, 0.05, 1, 0.96])
     fig.savefig(os.path.join(fig_dir, 'hd_jp_est_since2019.png'), dpi=130)
+
+    # 1c) 自然利子率 r* の水準（定常値＋乖離）
+    rss = m.ss['rstar_ann']                                      # モデルの定常状態の自然利子率（年率%）
+    g_gap = m.ss['gdp_obs'] - data['gdp'].mean()                 # モデルのトレンド成長率と日本の平均成長率の差
+    r_lvl = out['rstar_ann']['合計'] + rss
+    r_ma = r_lvl.rolling(4).mean()
+    pd.DataFrame({'rstar_level': r_lvl, 'rstar_level_4q_avg': r_ma}).to_csv(
+        os.path.join(HERE, 'data', 'rstar_level_jp_est.csv'), float_format='%.4f')
+    fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+    for ax, start, ttl in [(axes[0], '1995-01-01', '1995〜2026Q3'), (axes[1], '2019-10-01', '2019Q4〜2026Q3')]:
+        lv, ma = r_lvl.loc[start:], r_ma.loc[start:]
+        ax.plot(lv.index, lv, color='#9ecae1', lw=1, marker='o', ms=2.5, label='自然利子率 r*（四半期, 年率）')
+        ax.plot(ma.index, ma, color='#1f6fb5', lw=2.5, label='同 4四半期平均')
+        ax.axhline(rss, color='#d95f02', lw=1.5, ls='--', label=f'モデルの定常値 {rss:.2f}%（米国の設定）')
+        ax.axhline(rss - g_gap, color='#7b2fd0', lw=1.2, ls=':',
+                   label=f'参考：日本の低い成長率で補正した定常値 {rss - g_gap:.2f}%')
+        ax.axhline(0, color='k', lw=0.8)
+        ax.set_ylabel('%（年率, 実質）'); ax.grid(alpha=0.3); ax.set_title(f'自然利子率 r* の水準（{ttl}）')
+    axes[0].set_ylim(-25, 25); axes[1].set_ylim(-25, 40)
+    axes[0].legend(loc='lower left', fontsize=9)
+    fig.suptitle('自然利子率 r* の水準＝定常値＋乖離【本格版】（上段は±25%で表示を切っている）', fontsize=13)
+    fig.tight_layout(rect=[0, 0, 1, 0.96]); fig.savefig(os.path.join(fig_dir, 'hd_jp_est_rstar_level.png'), dpi=130)
+    print('r* 定常値', round(rss, 3), ' 成長率差', round(g_gap, 3))
+    print(r_ma.loc['2019-10-01':].iloc[::2].round(2).to_dict())
+    print('年平均', r_lvl.groupby(r_lvl.index.year).mean().round(2).to_dict())
 
     # 2) お試し版との比較（グループ別寄与、3期間平均）
     periods = [('1995-01-01', '2012-10-01', 'デフレ期\n1995〜2012'), ('2013-01-01', '2021-10-01', '異次元緩和期\n2013〜2021'),
