@@ -6,7 +6,9 @@
 - Durbin-Koopman の平滑化でショックを取り出し、ショックごとの寄与を積み上げる
 - パラメータは論文の事後平均（推定はしない）
 
-使い方:  python hd.py   （先に data.py で data/observables.csv を作っておく）
+使い方:  python hd.py [paper|alt]
+  paper（既定）: data/observables_paper.csv（論文3.2節どおり Fernald TFP と SPF の10年インフレ期待。python data.py --paper-sources で作る）
+  alt          : data/observables.csv（旧来の代替データ版。TFP欠損、インフレ期待は EXPINF10YR で代用）。出力に _alt が付く
 """
 import os
 import numpy as np
@@ -33,6 +35,33 @@ GROUPS = {
 }
 COLORS = {'供給': '#1f6fb5', '需要': '#d95f02', '金融': '#e6ab02', '財政': '#7b2fd0',
           '原油': '#2ca02c', 'その他': '#5bc0eb'}
+
+
+DATASETS = {'paper': ('observables_paper.csv', ''), 'alt': ('observables.csv', '_alt')}
+HD_VARS = ['core_yoy', 'head_yoy', 'gap', 'rstar_ann']
+
+
+def load_observables(which='paper', here=None):
+    here = here or os.path.dirname(os.path.abspath(__file__))
+    data = pd.read_csv(os.path.join(here, 'data', DATASETS[which][0]), index_col=0, parse_dates=True)
+    return data.loc[:'2026-04-01']                                  # 論文と同じ 2026Q2 まで
+
+
+def run_hd(data, m=None):
+    """カルマン平滑化と歴史分解。out[var] はグループ別寄与・その他・合計（定常状態からの乖離）"""
+    m = m or Model().solve(verbose=False)
+    T, R, Z, d = state_space(m, data)
+    Y = data[OBS].values
+    q = shock_cov(m, data.index)
+    xs, eta, ll = kalman_smoother(T, R, Z, d, Y, q)
+    init, contrib = decompose(T, R, xs, eta, m)
+    out = {}
+    for var in HD_VARS:
+        j = m.idx[var]
+        parts = {g: contrib[:, [m.sidx[s] for s in ss_], j].sum(1) for g, ss_ in GROUPS.items()}
+        parts['その他'] = init[:, j] + contrib[:, m.ne:, j].sum(1)
+        out[var] = pd.DataFrame({**parts, '合計': xs[:, j]}, index=data.index)
+    return dict(m=m, T=T, R=R, Z=Z, d=d, Y=Y, xs=xs, eta=eta, ll=ll, init=init, contrib=contrib, out=out)
 
 
 def state_space(m, data):
@@ -137,22 +166,19 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     plt.rcParams['font.family'] = 'IPAGothic'
     plt.rcParams['axes.unicode_minus'] = False
+    import sys
     here = os.path.dirname(os.path.abspath(__file__))
-    data = pd.read_csv(os.path.join(here, 'data', 'observables.csv'), index_col=0, parse_dates=True)
-    data = data.loc[:'2026-04-01']                                  # 論文と同じ 2026Q2 まで
-    m = Model().solve(verbose=False)
-    T, R, Z, d = state_space(m, data)
-    Y = data[OBS].values
-    q = shock_cov(m, data.index)
-    xs, eta, ll = kalman_smoother(T, R, Z, d, Y, q)
-    init, contrib = decompose(T, R, xs, eta, m)
-    print('対数尤度:', round(ll, 1), ' 分解の誤差:', np.abs(init + contrib.sum(1) - xs).max())
+    which = sys.argv[1] if len(sys.argv) > 1 else 'paper'
+    sfx = DATASETS[which][1]
+    data = load_observables(which, here)
+    r = run_hd(data)
+    m, T, R, Z, d, Y, xs, eta, ll, init, contrib = (r[k] for k in ['m', 'T', 'R', 'Z', 'd', 'Y', 'xs', 'eta', 'll', 'init', 'contrib'])
+    print('データ:', DATASETS[which][0], ' 対数尤度:', round(ll, 1), ' 分解の誤差:', np.abs(init + contrib.sum(1) - xs).max())
     fit = d + xs @ Z.T
-    ok = ~np.isnan(Y)
     print('観測値との誤差（測定誤差なしの系列で0になるはず）: core', np.nanmax(np.abs(fit[:, 8] - Y[:, 8])))
 
     names = [s[0] for s in SHOCKS + COVID_SHOCKS] + ['me_' + x[0] for x in ME]
-    pd.DataFrame(eta, index=data.index, columns=names).to_csv(os.path.join(here, 'data', 'smoothed_shocks.csv'), float_format='%.5f')
+    pd.DataFrame(eta, index=data.index, columns=names).to_csv(os.path.join(here, 'data', f'smoothed_shocks{sfx}.csv'), float_format='%.5f')
 
     targets = [('core_yoy', 'コアPCEインフレ率（前年比, %pt）'), ('head_yoy', '総合インフレ率（前年比, %pt）'),
                ('gap', '産出ギャップ（%）'), ('rstar_ann', '自然利子率 r*（年率, %pt）')]
@@ -183,7 +209,7 @@ if __name__ == '__main__':
     fig.legend(h, l, loc='lower center', ncol=7, fontsize=11)
     fig.suptitle('歴史分解（2019Q4〜2026Q2, 定常状態からの乖離）', fontsize=14)
     fig.tight_layout(rect=[0, 0.05, 1, 0.96])
-    fig.savefig(os.path.join(here, 'figures', 'hd_simplified.png'), dpi=130)
+    fig.savefig(os.path.join(here, 'figures', f'hd_simplified{sfx}.png'), dpi=130)
 
     # コアPCE単体（論文図4(a)と同じ形）
     fig, ax = plt.subplots(figsize=(11, 6))
@@ -201,6 +227,6 @@ if __name__ == '__main__':
     ax.set_title('コアPCEインフレ率（前年比）の歴史分解')
     ax.legend(ncol=4, loc='upper right'); ax.grid(axis='y', alpha=0.3)
     fig.tight_layout()
-    fig.savefig(os.path.join(here, 'figures', 'hd_core_pce.png'), dpi=130)
-    pd.concat(out, axis=1).to_csv(os.path.join(here, 'data', 'historical_decomposition.csv'), float_format='%.4f')
+    fig.savefig(os.path.join(here, 'figures', f'hd_core_pce{sfx}.png'), dpi=130)
+    pd.concat(out, axis=1).to_csv(os.path.join(here, 'data', f'historical_decomposition{sfx}.csv'), float_format='%.4f')
     print(out['core_yoy'].loc['2021-01-01':'2026-04-01'].iloc[::2].round(2))
