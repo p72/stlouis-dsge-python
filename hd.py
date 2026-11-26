@@ -14,7 +14,7 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.linalg import solve_discrete_lyapunov
-from stlouis_dsge import Model, SHOCKS, COVID_SHOCKS
+from stlouis_dsge import Model, SHOCKS, COVID_SHOCKS, COVID_WINDOWS  # noqa: F401
 
 ME = [  # 名前, rho, sigma（表C-2の事後平均）
     ('gdp', 0.0807, 0.0030), ('tfp', 0.0773, 0.0088), ('oil', 0.9530, 0.0910),
@@ -23,9 +23,6 @@ ME = [  # 名前, rho, sigma（表C-2の事後平均）
 TP = 0.0099                       # 期間プレミアムの切片
 OBS = ['gdp', 'cons', 'inv', 'gov', 'tr', 'wage', 'hours', 'ffr', 'core', 'tfp',
        'oil', 'gas', 'infexp', 't10', 'cy']
-COVID_WINDOWS = {'chi_cov': ('2020-01-01', '2020-07-01'),
-                 't_cov': ('2020-04-01', '2022-01-01'),
-                 'N_cov': ('2020-01-01', '2020-10-01')}
 GROUPS = {
     '供給': ['GZ', 'GN', 'zeta', 'mup', 'muw', 'N_cov'],
     '需要': ['chi', 'vt', 'chi_cov'],
@@ -108,9 +105,7 @@ def state_space(m, data):
 def shock_cov(m, dates):
     """時点ごとのショック共分散（対角）。COVID ショックは有効期間のみ1"""
     q = np.ones((len(dates), m.ne + len(ME)))
-    for k, (a, b) in COVID_WINDOWS.items():
-        j = m.sidx[k]
-        q[:, j] = ((dates >= a) & (dates <= b)).astype(float)
+    q[:, :m.ne] = m.shock_scale(dates=dates)          # 有効期間の定義は stlouis_dsge.COVID_WINDOWS と共有
     return q
 
 
