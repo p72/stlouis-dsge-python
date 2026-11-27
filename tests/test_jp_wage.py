@@ -41,3 +41,18 @@ def test_tfp_obs_weights_and_augmentation():
     q1, _ = F.wage_by_shock(m1, init, contrib, xs, E.DATA.index)
     ok = E.DATA['wage'].notna()
     assert np.nanmax(np.abs(q1['合計'][ok] - (E.DATA['wage'] - d[5])[ok])) < 1e-6
+
+
+def test_hours_cases_fit_and_adjust():
+    """時間当たりケース: 賃金は実績どおり、E.DATA は元に戻る、2011年の欠損は埋まる"""
+    import hours_jp as HJ
+    th = H.posterior_theta('mean')
+    before = E.DATA.copy()
+    r = HJ.run_case(th, 'C')
+    assert E.DATA.equals(before)
+    ok = r['data']['wage'].notna()
+    assert np.nanmax(np.abs(r['q']['合計'] - (r['data']['wage'] - r['mean']))[ok]) < 1e-6
+    h = HJ.load_hours()
+    assert h['hours_per_worker_nsa'].notna().all() and h['filled'].sum() == 3
+    dh = 400 * np.log(h['hours_per_worker_sa']).diff().reindex(before.index)
+    assert np.allclose((r['data']['wage'] + dh).dropna(), before['wage'].reindex((r['data']['wage'] + dh).dropna().index))
