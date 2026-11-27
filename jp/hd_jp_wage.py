@@ -30,10 +30,10 @@ from stlouis_dsge import SHOCKS, COVID_SHOCKS                   # noqa: E402
 ALL_SHOCKS = [x[0] for x in SHOCKS + COVID_SHOCKS]               # コロナ期だけ動く3ショックも含める
 
 GROUPS = list(hd.GROUPS) + ['その他']
-SHOCK_JP = {'GZ': 'TFP成長', 'GN': '人口成長', 'zeta': '定常TFP', 'mup': '価格マークアップ', 'muw': '賃金マークアップ',
-            'N_cov': 'コロナ労働供給', 'chi': '割引率（需要）', 'vt': '投資効率', 'chi_cov': 'コロナ需要',
-            'mp': '金融政策', 'pistar': 'トレンドインフレ', 'g': '政府支出', 't': '移転', 't_cov': 'コロナ移転',
-            'oS': '原油供給'}
+SHOCK_JP = {'GZ': 'TFP成長', 'GN': '労働不効用', 'zeta': '投資の限界効率', 'mup': '価格マークアップ', 'muw': '賃金マークアップ',
+            'N_cov': 'コロナ労働供給', 'chi': '限界効用（需要）', 'vt': 'コンビニエンス・イールド', 'chi_cov': 'コロナ需要',
+            'mp': '金融政策', 'pistar': 'インフレ目標', 'g': '政府消費', 't': '移転支出', 't_cov': 'コロナ移転支出',
+            'oS': '原油供給'}                                        # stlouis_dsge.SHOCKS の名前に合わせる
 
 
 def wage_parts(theta, data):

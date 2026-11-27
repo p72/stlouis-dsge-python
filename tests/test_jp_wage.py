@@ -21,3 +21,23 @@ def test_wage_decomposition_adds_up_and_fits_data():
     lv = W.to_level(q, '2012-10-01')
     assert abs(lv.loc['2012-10-01', '合計']) < 1e-12
     assert abs(lv['合計'].iloc[-1] - (q.loc['2013-01-01':, '合計'] / 4).sum()) < 1e-8
+
+
+def test_tfp_obs_weights_and_augmentation():
+    """年次TFPの観測: 三角加重は合計1、観測行は GZ とそのラグにだけ乗る"""
+    import tfp_jp as F
+    assert abs(F.W.sum() - 1) < 1e-12
+    th = H.posterior_theta('mean')
+    m, T, R, Z, d, q = E.build(th)
+    T1, R1, Z1, d1, q1 = F.augment(m, T, R, Z, d, q, 1.0)
+    n0 = T.shape[0]
+    assert T1.shape[0] == n0 + 7 and Z1.shape[0] == Z.shape[0] + 1 and q1.shape[1] == q.shape[1] + 1
+    row = Z1[-1]
+    c = 400 / m.p['GZ_bar']
+    assert abs(row[m.idx['GZ']] - c / 16) < 1e-12 and np.allclose(row[n0:n0 + 6], c * F.W[1:])
+    assert np.count_nonzero(row) == 8                     # GZ・ラグ6つ・測定誤差
+    # 年次TFPを測定誤差大きめで足しても、賃金の推計値は実績のまま
+    m1, Z1, d1, Y, xs, eta, ll, init, contrib = F.run_with_tfp(th, 1.0)
+    q1, _ = F.wage_by_shock(m1, init, contrib, xs, E.DATA.index)
+    ok = E.DATA['wage'].notna()
+    assert np.nanmax(np.abs(q1['合計'][ok] - (E.DATA['wage'] - d[5])[ok])) < 1e-6
